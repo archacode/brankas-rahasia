@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import CryptoJS from 'crypto-js';
+import { useNavigate } from 'react-router-dom'; // <-- 1. IMPORT NAVIGASI KEAMANAN
 
 export default function Vault({ masterKey }) {
   // --- STATE UTAMA ---
@@ -24,9 +25,16 @@ export default function Vault({ masterKey }) {
   const [showSubAddForm, setShowSubAddForm] = useState(false);
   const [subFormData, setSubFormData] = useState({ label: '', value: '' });
 
+  const navigate = useNavigate(); // <-- 2. ALAT PENENDANG
+
+  // <-- 3. SISTEM KEAMANAN ANTI-MUNDUR DITAMBAHKAN DI SINI -->
   useEffect(() => {
-    fetchAccounts();
-  }, []);
+    if (!masterKey) {
+      navigate('/'); // Tendang ke depan kalau kunci hilang
+    } else {
+      fetchAccounts();
+    }
+  }, [masterKey, navigate]);
 
   // --- FUNGSI FETCH ---
   const fetchAccounts = async () => {
@@ -193,6 +201,9 @@ export default function Vault({ masterKey }) {
       <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#27c93f' }}></div>
     </div>
   );
+
+  // <-- 4. PENCEGAH KEDIP SAAT DITENDANG -->
+  if (!masterKey) return null;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#010409', color: '#c9d1d9', fontFamily: 'monospace', padding: '20px 15px' }}>
@@ -411,7 +422,7 @@ export default function Vault({ masterKey }) {
                 {subAccounts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '20px 15px', border: '1px dashed #30363d', borderRadius: '6px', background: '#161b22' }}>
                      <p style={{ color: '#8b949e', marginTop: 0, fontSize: '11px' }}>
-                        /* Ruang untuk Sub-Akun, Website, atau Kunci Spesifik lainnya */
+                       /* Ruang untuk Sub-Akun, Website, atau Kunci Spesifik lainnya */
                      </p>
                      <div style={{ color: '#d2a8ff', fontSize: '18px', margin: '10px 0' }}>[ EMP_TY ]</div>
                   </div>
@@ -437,7 +448,6 @@ export default function Vault({ masterKey }) {
               {showSubAddForm ? (
                 <form onSubmit={handleAddSubAccount} style={{ background: '#0d1117', padding: '15px', borderRadius: '6px', border: '1px solid #58a6ff' }}>
                   <div style={{ color: '#58a6ff', marginBottom: '10px', fontSize: '12px' }}>&gt;_ new_child_entry</div>
-                  {/* Teks placeholder disesuaikan menjadi "Username/Akun" dan "Password/Kunci" */}
                   <input placeholder="const account = 'Username / Nama Akun';" value={subFormData.label} onChange={e => setSubFormData({...subFormData, label: e.target.value})} style={inputCodeStyle} required />
                   <input placeholder="const key = 'Password / Kunci Rahasia';" value={subFormData.value} onChange={e => setSubFormData({...subFormData, value: e.target.value})} style={{...inputCodeStyle, marginTop: '10px'}} required />
                   
@@ -460,19 +470,15 @@ export default function Vault({ masterKey }) {
   );
 }
 
-// --- GAYA CSS ---
+// --- GAYA CSS TETAP SAMA SEPERTI ASLIMU ---
 const avatarStyle = { width: '35px', height: '35px', borderRadius: '50%', border: '1px solid #30363d', objectFit: 'cover', flexShrink: 0, background: '#161b22' };
 const avatarFallbackStyle = { width: '35px', height: '35px', background: '#21262d', border: '1px solid #30363d', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#8b949e', fontWeight: 'bold' };
-
 const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(1,4,9,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '15px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
 const modalStyle = { background: '#0d1117', border: '1px solid #30363d', borderRadius: '10px', width: '100%', maxWidth: '450px', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', overflow: 'hidden', maxHeight: '95vh', display: 'flex', flexDirection: 'column' };
 const closeBtnStyle = { position: 'absolute', top: '10px', right: '15px', background: 'transparent', border: 'none', color: '#ff7b72', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'monospace' };
-
 const inputCodeStyle = { padding: '10px 12px', background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: '6px', fontFamily: 'monospace', outline: 'none', width: '100%', boxSizing: 'border-box', fontSize: '12px' };
 const uploadBoxStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', background: '#0d1117', border: '1px dashed #30363d', borderRadius: '6px', cursor: 'pointer', color: '#58a6ff', fontSize: '12px', fontFamily: 'monospace', textAlign: 'center' };
 const btnStyle = { padding: '10px 15px', background: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', marginTop: '10px' };
-
 const bigAvatarStyle = { width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #30363d', objectFit: 'cover', background: '#161b22', flexShrink: 0 };
 const bigAvatarFallbackStyle = { width: '50px', height: '50px', background: '#161b22', border: '1px solid #30363d', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#8b949e', flexShrink: 0 };
-
 const copyBtnStyle = { background: 'transparent', color: '#8b949e', border: '1px solid #30363d', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' };

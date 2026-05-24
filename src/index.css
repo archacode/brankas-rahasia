@@ -1,0 +1,19 @@
+/* Mengatur ulang margin bawaan browser dan membuat background full gelap */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #010409; /* Warna hitam gelap menyatu dengan aplikasi */
+  font-family: monospace;
+}
+
+/* Memastikan ukuran elemen tidak melebihi layar */
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
