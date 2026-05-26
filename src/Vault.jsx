@@ -1,484 +1,444 @@
-import { useState, useEffect } from 'react';
-import { supabase } from './supabase';
-import CryptoJS from 'crypto-js';
-import { useNavigate } from 'react-router-dom'; // <-- 1. IMPORT NAVIGASI KEAMANAN
+import React, { useState, useEffect } from 'react';
+import './Vault.css'; 
+import { supabase } from './supabase'; 
 
-export default function Vault({ masterKey }) {
-  // --- STATE UTAMA ---
+function Vault({ onLock }) {
   const [accounts, setAccounts] = useState([]);
-  const [subAccounts, setSubAccounts] = useState([]); 
-  
-  // State untuk form & interaksi UI Utama
-  const [formData, setFormData] = useState({ name: '', desc: '', password: '' });
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [editingId, setEditingId] = useState(null); 
-  
-  // State untuk fitur Search & Pagination
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [activeCategory, setActiveCategory] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(3);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
-  // State Form Sub-Menu
-  const [showSubVaultModal, setShowSubVaultModal] = useState(false);
-  const [showSubAddForm, setShowSubAddForm] = useState(false);
-  const [subFormData, setSubFormData] = useState({ label: '', value: '' });
+  const [isPribadiUnlocked, setIsPribadiUnlocked] = useState(false);
+  const [showPribadiGate, setShowPribadiGate] = useState(false);
+  const [pribadiPasswordInput, setPribadiPasswordInput] = useState('');
+  const [pribadiError, setPribadiError] = useState('');
 
-  const navigate = useNavigate(); // <-- 2. ALAT PENENDANG
+  const [isBankUnlocked, setIsBankUnlocked] = useState(false);
+  const [showBankGate, setShowBankGate] = useState(false);
+  const [bankPasswordInput, setBankPasswordInput] = useState('');
+  const [bankError, setBankError] = useState('');
 
-  // <-- 3. SISTEM KEAMANAN ANTI-MUNDUR DITAMBAHKAN DI SINI -->
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); 
+  
+  const [formData, setFormData] = useState({
+    id: null, site_name: '', description: '', username: '', password: '', 
+    category: 'Bank', spam_group: '', image_url: '', cover_image_url: ''
+  });
+
+  const [imageFile, setImageFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
+
+  // --- 1. MENGAMBIL DATA DARI DATABASE ---
   useEffect(() => {
-    if (!masterKey) {
-      navigate('/'); // Tendang ke depan kalau kunci hilang
-    } else {
-      fetchAccounts();
-    }
-  }, [masterKey, navigate]);
+    fetchAccounts();
+  }, []);
 
-  // --- FUNGSI FETCH ---
   const fetchAccounts = async () => {
-    const { data, error } = await supabase.from('accounts').select('*').order('created_at', { ascending: false });
-    if (!error && data) setAccounts(data);
-  };
-
-  const fetchSubAccounts = async (parentId) => {
-    const { data, error } = await supabase
-      .from('sub_accounts')
-      .select('*')
-      .eq('parent_id', parentId)
-      .order('created_at', { ascending: true });
-    if (!error && data) setSubAccounts(data);
-  };
-
-  // --- FUNGSI CRUD AKUN UTAMA ---
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
-  };
-
-  const handleSaveAccount = async (e) => {
-    e.preventDefault();
-    if (!masterKey) return alert('SYSTEM ERROR: Kunci hilang. Silakan masuk lagi.');
-    if (!formData.name || !formData.password) return alert('Error: Nama dan Password wajib diisi.');
-
-    setIsUploading(true);
-    let finalLogoUrl = selectedAccount?.logo_url || '';
-
-    if (selectedFile) {
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, selectedFile);
-
-      if (uploadError) {
-        alert('Gagal mengunggah foto: ' + uploadError.message);
-        setIsUploading(false);
-        return;
-      }
-      const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
-      finalLogoUrl = publicUrl;
-    }
-
-    const encrypted = CryptoJS.AES.encrypt(formData.password, masterKey).toString();
-    
-    let error;
-    if (editingId) {
-      const { error: updateError } = await supabase.from('accounts').update({
-        account_name: formData.name,
-        description: formData.desc,
-        logo_url: finalLogoUrl,
-        encrypted_password: encrypted
-      }).eq('id', editingId);
-      error = updateError;
-    } else {
-      const { error: insertError } = await supabase.from('accounts').insert([{
-        account_name: formData.name,
-        description: formData.desc,
-        logo_url: finalLogoUrl,
-        encrypted_password: encrypted
-      }]);
-      error = insertError;
-    }
-
-    setIsUploading(false);
-
-    if (!error) {
-      closeFormModal();
-      fetchAccounts();
-    } else {
-      alert('System Failure: Gagal menyimpan data.');
-    }
-  };
-
-  const handleDeleteAccount = async (id) => {
-    const isConfirm = window.confirm("WARNING: Data beserta semua Sub-Vault di dalamnya akan dihapus permanen. Lanjutkan?");
-    if (!isConfirm) return;
-
-    const { error } = await supabase.from('accounts').delete().eq('id', id);
-    if (!error) {
-      setSelectedAccount(null);
-      fetchAccounts();
-    } else {
-      alert("Gagal menghapus data.");
-    }
-  };
-
-  const handleOpenEdit = (acc) => {
-    setEditingId(acc.id);
-    setFormData({
-      name: acc.account_name,
-      desc: acc.description,
-      password: decryptPassword(acc.encrypted_password)
-    });
-    setSelectedAccount(null); 
-    setShowAddModal(true);    
-  };
-
-  const closeFormModal = () => {
-    setShowAddModal(false);
-    setEditingId(null);
-    setFormData({ name: '', desc: '', password: '' });
-    setSelectedFile(null);
-  };
-
-  // --- FUNGSI CRUD SUB-VAULT ---
-  const handleAddSubAccount = async (e) => {
-    e.preventDefault();
-    if (!subFormData.label || !subFormData.value) return alert("Lengkapi data!");
-
-    const encrypted = CryptoJS.AES.encrypt(subFormData.value, masterKey).toString();
-    const { error } = await supabase.from('sub_accounts').insert([{
-      parent_id: selectedAccount.id,
-      label: subFormData.label,
-      encrypted_value: encrypted
-    }]);
-
-    if (!error) {
-      setSubFormData({ label: '', value: '' });
-      setShowSubAddForm(false);
-      fetchSubAccounts(selectedAccount.id);
-    } else {
-      alert("Gagal menyimpan sub-data.");
-    }
-  };
-
-  const deleteSubAccount = async (id) => {
-    if(!window.confirm("Hapus sub-data ini?")) return;
-    const { error } = await supabase.from('sub_accounts').delete().eq('id', id);
-    if (!error) fetchSubAccounts(selectedAccount.id);
-  };
-
-  const handleExploreSubVault = () => {
-    fetchSubAccounts(selectedAccount.id);
-    setShowSubVaultModal(true);
-  };
-
-  // --- UTILS ---
-  const decryptPassword = (encryptedData) => {
-    if (!masterKey) return 'SYSTEM_LOCKED';
+    setIsLoading(true);
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedData, masterKey);
-      return bytes.toString(CryptoJS.enc.Utf8) || 'ACCESS DENIED';
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) console.error("Gagal narik data Supabase:", error);
+      else setAccounts(data || []);
     } catch (err) {
-      return 'ACCESS DENIED';
+      console.error("Koneksi Supabase error:", err);
     }
+    setIsLoading(false);
+  };
+
+  // --- 2. SENSOR KEAMANAN (AUTO-LOCK PINDAH TAB & MUNDUR BROWSER) ---
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => { if (onLock) onLock(); };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [onLock]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setIsPribadiUnlocked(false);
+        setIsBankUnlocked(false);
+        if (activeCategory === 'Pribadi' || activeCategory === 'Bank') {
+          setActiveCategory('Semua');
+          setShowPribadiGate(false);
+          setShowBankGate(false);
+        }
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    return () => window.removeEventListener('visibilitychange', handleVisibility);
+  }, [activeCategory]);
+
+  const handleCategoryClick = (categoryName) => {
+    if (categoryName !== 'Pribadi') setIsPribadiUnlocked(false);
+    if (categoryName !== 'Bank') setIsBankUnlocked(false);
+
+    if (categoryName === 'Pribadi') {
+      if (!isPribadiUnlocked) setShowPribadiGate(true);
+      else setActiveCategory(categoryName);
+    } 
+    else if (categoryName === 'Bank') {
+      if (!isBankUnlocked) setShowBankGate(true);
+      else setActiveCategory(categoryName);
+    } 
+    else {
+      setActiveCategory(categoryName);
+    }
+  };
+
+  const handleBankUnlockSubmit = (e) => {
+    e.preventDefault();
+    if (bankPasswordInput === "kaya") {
+      setIsBankUnlocked(true); setShowBankGate(false); setBankError(''); setActiveCategory('Bank'); setBankPasswordInput('');
+    } else {
+      setBankError('Kunci Brankas Bank Salah!'); setBankPasswordInput('');
+    }
+  };
+
+  const handlePribadiUnlockSubmit = (e) => {
+    e.preventDefault();
+    if (pribadiPasswordInput === "diam") {
+      setIsPribadiUnlocked(true); setShowPribadiGate(false); setPribadiError(''); setActiveCategory('Pribadi'); setPribadiPasswordInput('');
+    } else {
+      setPribadiError('Kunci Pribadi Salah, Bos!'); setPribadiPasswordInput('');
+    }
+  };
+
+  // --- 3. FILTERING & SEARCH ANTI-CRASH ---
+  const filteredAccounts = accounts.filter((account) => {
+    if (!account) return false;
+    
+    const cat = account.category || 'Bank'; 
+    if (activeCategory === 'Semua' && (cat === 'Pribadi' || cat === 'Spam' || cat === 'Bank')) return false; 
+    
+    const matchesCategory = activeCategory === 'Semua' || cat === activeCategory;
+    const siteName = String(account.site_name || '').toLowerCase();
+    const username = String(account.username || '').toLowerCase();
+    const query = String(searchQuery || '').toLowerCase();
+    const matchesSearch = siteName.includes(query) || username.includes(query);
+    
+    return matchesCategory && matchesSearch;
+  });
+
+  const groupSpamAccounts = () => {
+    const groups = {};
+    filteredAccounts.forEach(account => {
+      const groupName = String(account.spam_group || 'Tanpa Kelompok').trim();
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(account);
+    });
+    return groups;
+  };
+
+  const existingSpamGroups = Array.from(new Set(
+    accounts.filter(acc => acc && acc.category === 'Spam' && acc.spam_group).map(acc => String(acc.spam_group).trim())
+  ));
+
+  const handleAddClick = () => {
+    setFormData({ id: null, site_name: '', description: '', username: '', password: '', category: 'Bank', spam_group: '', image_url: '', cover_image_url: '' });
+    setImageFile(null); setCoverFile(null); setIsEditing(false); setShowModal(true);
+  };
+
+  const handleEditClick = (account) => {
+    setFormData({
+      id: account.id,
+      site_name: account.site_name || '',
+      description: account.description || '',
+      username: account.username || '',
+      password: account.password || '',
+      category: account.category || 'Bank',
+      spam_group: account.spam_group || '',
+      image_url: account.image_url || '',
+      cover_image_url: account.cover_image_url || ''
+    });
+    setImageFile(null); setCoverFile(null); setIsEditing(true); setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Yakin mau menghapus akun ini permanen, Bos?")) {
+      try {
+        await supabase.from('accounts').delete().eq('id', id);
+        fetchAccounts();
+      } catch (err) { alert("Gagal menghapus!"); }
+    }
+  };
+
+  // --- 4. SIMPAN KE DATABASE (DENGAN ALARM ERROR) ---
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true); 
+
+    let finalImageUrl = formData.image_url;
+    let finalCoverUrl = formData.cover_image_url;
+
+    const uploadFileToSupabase = async (file) => {
+      try {
+        const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const { error } = await supabase.storage.from('vault-images').upload(fileName, file);
+        if (error) return null;
+        const { data } = supabase.storage.from('vault-images').getPublicUrl(fileName);
+        return data.publicUrl; 
+      } catch (err) { return null; }
+    };
+
+    if (imageFile) {
+      const url = await uploadFileToSupabase(imageFile);
+      finalImageUrl = url || ''; 
+    }
+    if (coverFile) {
+      const url = await uploadFileToSupabase(coverFile);
+      finalCoverUrl = url || '';
+    }
+
+    const accountDataToSave = {
+      site_name: formData.site_name || 'Tanpa Nama',
+      description: formData.description || '',
+      username: formData.username || '',
+      password: formData.password || '',
+      category: formData.category || 'Bank',
+      spam_group: formData.spam_group || '',
+      image_url: finalImageUrl || '',
+      cover_image_url: finalCoverUrl || ''
+    };
+
+    try {
+      let dbError = null;
+      if (isEditing) {
+        const { error } = await supabase.from('accounts').update(accountDataToSave).eq('id', formData.id);
+        dbError = error;
+      } else {
+        const { error } = await supabase.from('accounts').insert([accountDataToSave]);
+        dbError = error;
+      }
+
+      // ALARM JIKA SUPABASE MENOLAK DATA BARU
+      if (dbError) {
+        alert("Waduh, Supabase nolak Bos! Alasan: " + dbError.message);
+        console.error("Detail Error:", dbError);
+      }
+
+    } catch (err) { 
+      alert("Sistem Crash Bos: " + err.message);
+      console.error(err); 
+    }
+
+    setIsSaving(false); setShowModal(false); setImageFile(null); setCoverFile(null); fetchAccounts(); 
+  };
+
+  const handleImageChange = (e, field) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (field === 'image') setImageFile(file);
+      if (field === 'cover_image') setCoverFile(file);
+      const localUrl = URL.createObjectURL(file);
+      setFormData({ ...formData, [field === 'image' ? 'image_url' : 'cover_image_url']: localUrl });
+    }
+  };
+
+  const togglePassword = (id) => {
+    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleCopy = (text) => {
+    if (!text) return alert("Kosong Bos, gak ada yang bisa dicopy!");
     navigator.clipboard.writeText(text);
-    alert(`[✓] Copied to clipboard.`);
+    alert("Berhasil dicopy, Bos!"); 
   };
 
-  // Logika Pencarian
-  const filteredAccounts = accounts.filter(acc => 
-    acc.account_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const displayedAccounts = filteredAccounts.slice(0, visibleCount);
+  const Icons = {
+    Lock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>,
+    LockSmall: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '14px', height: '14px', marginLeft: 'auto', opacity: 0.8}}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>,
+    Folder: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width: '20px', height: '20px'}}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>,
+    All: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>,
+    Bank: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18"></path><path d="M3 10h18"></path><path d="M5 6l7-3 7 3"></path><path d="M4 10v11"></path><path d="M20 10v11"></path><path d="M8 14v3"></path><path d="M12 14v3"></path><path d="M16 14v3"></path></svg>,
+    Mail: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>,
+    Phone: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>,
+    Game: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12A10 10 0 0 0 2 12c0 4.2 2.6 7.7 6.3 9.1.5.2.9-.1 1.1-.5l.9-2.6h3.4l.9 2.6c.2.4.6.7 1.1.5 3.7-1.4 6.3-4.9 6.3-9.1z"></path></svg>,
+    Web: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>,
+    User: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>,
+    Trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2-2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+    Copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
+    Eye: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+    EyeOff: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+  };
 
-  const MacHeader = () => (
-    <div style={{ display: 'flex', gap: '8px', padding: '12px 15px', borderBottom: '1px solid #30363d', background: '#0d1117' }}>
-      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff5f56' }}></div>
-      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ffbd2e' }}></div>
-      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#27c93f' }}></div>
+  const renderCard = (account) => (
+    <div className="account-card" key={account.id}>
+      {account.cover_image_url && (
+        <div className="account-card-cover-wrapper">
+          <img src={account.cover_image_url} alt="Cover" className="account-card-cover" />
+          <div className="account-card-cover-overlay"></div>
+        </div>
+      )}
+      <div className="account-card-content">
+        <div className="card-header">
+          <div className="card-icon">
+            {account.image_url ? <img src={account.image_url} alt="Logo" /> : String(account.site_name || '?').substring(0, 1).toUpperCase()}
+          </div>
+          <div className="card-title-group">
+            <h3 className="card-title">{account.site_name || 'Tanpa Nama'}</h3>
+            <span className="card-category">{account.category || 'Bank'}</span>
+          </div>
+        </div>
+        {account.description && <div className="card-desc">{account.description}</div>}
+        <div className="card-body">
+          <div className="info-group">
+            <label className="info-label">Username / Email</label>
+            <div className="info-value-area">
+              <span className="info-value">{account.username}</span>
+              <button className="action-icon-btn" onClick={() => handleCopy(account.username)} title="Copy Username">{Icons.Copy}</button>
+            </div>
+          </div>
+          <div className="info-group">
+            <label className="info-label">Password</label>
+            <div className="info-value-area">
+              <span className="info-value">{visiblePasswords[account.id] ? account.password : '••••••••••••'}</span>
+              <button className="action-icon-btn" onClick={() => togglePassword(account.id)} title="Lihat Password">{visiblePasswords[account.id] ? Icons.EyeOff : Icons.Eye}</button>
+              <button className="action-icon-btn" onClick={() => handleCopy(account.password)} title="Copy Password">{Icons.Copy}</button>
+            </div>
+          </div>
+        </div>
+        <div className="card-actions">
+          <button className="btn-edit" onClick={() => handleEditClick(account)}>Edit</button>
+          <button className="btn-delete" onClick={() => handleDelete(account.id)}>Hapus</button>
+        </div>
+      </div>
     </div>
   );
 
-  // <-- 4. PENCEGAH KEDIP SAAT DITENDANG -->
-  if (!masterKey) return null;
-
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#010409', color: '#c9d1d9', fontFamily: 'monospace', padding: '20px 15px' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        
-        {/* 1. HEADER UTAMA */}
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ color: '#8b949e', marginBottom: '10px', fontSize: '12px' }}>
-            // system initialized. rendering components...
-          </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', background: '#0d1117', border: '1px solid #30363d', padding: '10px 20px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <span style={{ color: '#ff7b72', fontSize: '18px', fontWeight: 'bold' }}>const</span>
-            <span style={{ color: '#79c0ff', fontSize: '18px', fontWeight: 'bold', margin: '0 8px' }}>Vault</span>
-            <span style={{ color: '#c9d1d9', fontSize: '18px', fontWeight: 'bold' }}>=</span>
-            <span style={{ color: '#a5d6ff', fontSize: '18px', margin: '0 8px' }}>"</span>
-            <span style={{ color: '#a5d6ff', fontSize: '18px', fontWeight: 'bold', letterSpacing: '1px' }}>MY_SECRET</span>
-            <span style={{ color: '#a5d6ff', fontSize: '18px' }}>"</span>
-            <span style={{ color: '#c9d1d9', fontSize: '18px' }}>;</span>
-          </div>
+    <div className="vault-container">
+      <aside className="vault-sidebar">
+        <div className="brand-area" onClick={() => handleCategoryClick('Semua')} style={{cursor: 'pointer'}}>
+          <span className="brand-icon">{Icons.Lock}</span> LOCKLOCK
         </div>
+        <ul className="menu-list">
+          <li className={`menu-item ${activeCategory === 'Semua' ? 'active' : ''}`} onClick={() => handleCategoryClick('Semua')}>{Icons.All} Semua Akun</li>
+          <li className={`menu-item ${activeCategory === 'Bank' ? 'active' : ''}`} onClick={() => handleCategoryClick('Bank')} style={{display: 'flex'}}>{Icons.Bank} Perbankan {Icons.LockSmall}</li>
+          <li className={`menu-item ${activeCategory === 'Gmail' ? 'active' : ''}`} onClick={() => handleCategoryClick('Gmail')}>{Icons.Mail} Gmail</li>
+          <li className={`menu-item ${activeCategory === 'Medsos' ? 'active' : ''}`} onClick={() => handleCategoryClick('Medsos')}>{Icons.Phone} Sosial Media</li>
+          <li className={`menu-item ${activeCategory === 'Game' ? 'active' : ''}`} onClick={() => handleCategoryClick('Game')}>{Icons.Game} Game</li>
+          <li className={`menu-item ${activeCategory === 'Web' ? 'active' : ''}`} onClick={() => handleCategoryClick('Web')}>{Icons.Web} Website</li>
+          <li className={`menu-item ${activeCategory === 'Spam' ? 'active' : ''}`} onClick={() => handleCategoryClick('Spam')}>{Icons.Trash} Spam</li>
+          <li className={`menu-item ${activeCategory === 'Pribadi' ? 'active' : ''}`} onClick={() => handleCategoryClick('Pribadi')} style={{display: 'flex'}}>{Icons.User} Pribadi {Icons.LockSmall}</li>
+        </ul>
+        <div className="sidebar-footer">&copy; 2026 Archacode&trade;</div>
+      </aside>
 
-        {/* 2. KONTROL (SEARCH & ADD) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-             <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '5px' }}>// target_array</div>
-             <h2 style={{ margin: 0, fontWeight: 'bold', fontSize: '18px', color: '#d2a8ff' }}>accounts<span style={{color: '#c9d1d9'}}>[]</span></h2>
+      <main className="vault-main">
+        <header className="vault-header">
+          <div className="header-left"><h1>{activeCategory === 'Semua' ? 'Beranda / Semua Akun' : `Kategori: ${activeCategory}`}</h1></div>
+          <div className="header-right">
+            <input type="text" placeholder="Cari akun..." className="search-bar" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <button className="btn-add" onClick={handleAddClick}>+ Tambah Data</button>
           </div>
-          
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#0d1117', border: '1px solid #30363d', borderRadius: '6px', padding: '6px 12px', flex: 1 }}>
-              <span style={{ color: '#a5d6ff', marginRight: '5px' }}>"</span>
-              <input 
-                type="text" 
-                placeholder="search..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: '#a5d6ff', outline: 'none', width: '100%', minWidth: '80px', fontSize: '13px', fontFamily: 'monospace' }}
-              />
-              <span style={{ color: '#a5d6ff', marginLeft: '5px' }}>"</span>
-            </div>
-            <button 
-              onClick={() => { setEditingId(null); setShowAddModal(true); }}
-              style={{ padding: '7px 15px', borderRadius: '6px', background: '#238636', color: '#fff', fontSize: '14px', border: '1px solid rgba(240,246,252,0.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', fontWeight: 'bold', fontFamily: 'monospace', flexShrink: 0 }}
-            >
-              add()
-            </button>
-          </div>
-        </div>
+        </header>
 
-        {/* 3. DAFTAR AKUN */}
-        <div style={{ background: '#0d1117', borderRadius: '10px', overflow: 'hidden', border: '1px solid #30363d', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-          <MacHeader />
-          <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {displayedAccounts.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#8b949e', fontStyle: 'italic', margin: '20px 0' }}>// array is empty or undefined</p>
-            ) : (
-              displayedAccounts.map((acc) => (
-                <div key={acc.id} onClick={() => setSelectedAccount(acc)} style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid transparent', transition: 'border 0.2s' }} onMouseEnter={e => e.currentTarget.style.border = '1px solid #30363d'} onMouseLeave={e => e.currentTarget.style.border = '1px solid transparent'}>
-                  {acc.logo_url ? <img src={acc.logo_url} alt="logo" style={avatarStyle} /> : <div style={avatarFallbackStyle}>?</div>}
-                  <div style={{ overflow: 'hidden', flex: 1 }}>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#e6edf3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{acc.account_name}</h4>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8b949e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{acc.description}</p>
-                  </div>
+        <div className="vault-content">
+          {isLoading ? (
+            <div className="empty-state"><h3 style={{color: '#58a6ff'}}>🔄 Mengambil Data dari Brankas...</h3></div>
+          ) : filteredAccounts.length > 0 ? (
+            activeCategory === 'Spam' ? (
+              Object.entries(groupSpamAccounts()).map(([groupName, accountsInGroup]) => (
+                <div className="spam-group-section" key={groupName}>
+                  <h2 className="spam-group-heading">{Icons.Folder} Kelompok: {groupName}</h2>
+                  <div className="cards-grid">{accountsInGroup.map(acc => renderCard(acc))}</div>
                 </div>
               ))
-            )}
-          </div>
-        </div>
-
-        {/* 4. TOMBOL LOAD MORE */}
-        {filteredAccounts.length > visibleCount && (
-          <div style={{ textAlign: 'center', marginTop: '15px' }}>
-            <div 
-              onClick={() => setVisibleCount(prev => prev + 3)}
-              style={{ cursor: 'pointer', fontSize: '13px', color: '#58a6ff', display: 'inline-block' }}
-            >
-              load_more();
+            ) : (
+              <div className="cards-grid">{filteredAccounts.map(acc => renderCard(acc))}</div>
+            )
+          ) : (
+            <div className="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><path d="M11 8v2"></path><path d="M11 14h.01"></path></svg>
+              <h3>Waduh, Kosong Nih!</h3><p>Data yang Bos cari belum dibuat atau nggak ketemu.</p>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </main>
 
-      {/* ============================================================== */}
-      {/* MODAL 1: FORM TAMBAH / EDIT AKUN                               */}
-      {/* ============================================================== */}
-      {showAddModal && (
-        <div style={modalOverlayStyle}>
-          <div style={{...modalStyle, maxWidth: '500px'}}>
-            <MacHeader />
-            <button onClick={closeFormModal} style={closeBtnStyle}>x</button>
-            <form onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
-              <div style={{ margin: 0, fontSize: '14px' }}>
-                <span style={{ color: '#ff7b72' }}>function</span> <span style={{ color: '#d2a8ff' }}>{editingId ? 'updateData' : 'createNewData'}</span><span style={{color: '#c9d1d9'}}>() {'{'}</span>
+      {/* GERBANG BANK */}
+      {showBankGate && (
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ textAlign: 'center', padding: '40px 30px', width: '360px' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#58a6ff" strokeWidth="2" style={{ width: '50px', height: '50px', marginBottom: '15px' }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <h2>Brankas Perbankan</h2>
+            <form onSubmit={handleBankUnlockSubmit}>
+              <div className="form-group"><input type="password" required placeholder="Masukkan PIN Bank..." value={bankPasswordInput} onChange={(e) => setBankPasswordInput(e.target.value)} style={{ textAlign: 'center', letterSpacing: '4px' }} /></div>
+              <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px' }}>{bankError}</div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button type="button" className="btn-cancel" onClick={() => setShowBankGate(false)}>Batal</button>
+                <button type="submit" className="btn-save" style={{ backgroundColor: '#1f6feb' }}>Buka Brankas</button>
               </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px' }}>
-                  <span style={{ fontSize: '11px', color: '#8b949e' }}>// upload_image_object</span>
-                  <label style={uploadBoxStyle}>
-                      {selectedFile ? `[✓] ${selectedFile.name}` : '+ selectFile(logo)'}
-                      <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
-                  </label>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px' }}>
-                 <span style={{ fontSize: '11px', color: '#8b949e' }}>// account_target_name</span>
-                 <input placeholder="ex: Akun Utama / Nama Target" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={inputCodeStyle} required/>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px' }}>
-                 <span style={{ fontSize: '11px', color: '#8b949e' }}>// detail_description</span>
-                 <textarea placeholder="ex: Akun untuk keperluan..." value={formData.desc} onChange={e => setFormData({...formData, desc: e.target.value})} style={{...inputCodeStyle, minHeight: '50px', resize: 'vertical'}} />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '10px' }}>
-                 <span style={{ fontSize: '11px', color: '#8b949e' }}>// secret_password</span>
-                 <input type="password" placeholder="********" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={inputCodeStyle} required/>
-              </div>
-              
-              <div style={{ fontSize: '14px' }}>{'}'}</div>
-
-              <button type="submit" style={{...btnStyle, opacity: isUploading ? 0.5 : 1}} disabled={isUploading}>
-                {isUploading ? 'Executing()...' : 'Execute()'}
-              </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL 2: DETAIL AKUN UTAMA                                     */}
-      {/* ============================================================== */}
-      {selectedAccount && !showSubVaultModal && (
-        <div style={modalOverlayStyle}>
-          <div style={modalStyle}>
-            <MacHeader />
-            <button onClick={() => setSelectedAccount(null)} style={closeBtnStyle}>x</button>
-            
-            <div style={{ padding: '20px', fontFamily: 'monospace', fontSize: '13px' }}>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                {selectedAccount.logo_url ? <img src={selectedAccount.logo_url} alt="logo" style={bigAvatarStyle} /> : <div style={bigAvatarFallbackStyle}>?</div>}
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                   <span style={{ color: '#8b949e', fontSize: '11px' }}>// target_selected</span>
-                   <h3 style={{ margin: 0, color: '#e6edf3', fontSize: '16px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedAccount.account_name}</h3>
-                </div>
+      {/* GERBANG PRIBADI */}
+      {showPribadiGate && (
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ textAlign: 'center', padding: '40px 30px', width: '360px' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f85149" strokeWidth="2" style={{ width: '50px', height: '50px', marginBottom: '15px' }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <h2>Area Pribadi Terkunci</h2>
+            <form onSubmit={handlePribadiUnlockSubmit}>
+              <div className="form-group"><input type="password" required placeholder="Masukkan Kunci..." value={pribadiPasswordInput} onChange={(e) => setPribadiPasswordInput(e.target.value)} style={{ textAlign: 'center', letterSpacing: '4px' }} /></div>
+              <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px' }}>{pribadiError}</div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button type="button" className="btn-cancel" onClick={() => setShowPribadiGate(false)}>Batal</button>
+                <button type="submit" className="btn-save" style={{ backgroundColor: '#f85149' }}>Buka Kunci</button>
               </div>
-              
-              <div style={{ color: '#c9d1d9', lineHeight: '1.6', overflowX: 'auto', background: '#161b22', padding: '10px', borderRadius: '6px', border: '1px solid #30363d' }}>
-                <span style={{ color: '#ff7b72' }}>const</span> <span style={{ color: '#79c0ff' }}>vaultAccess</span> = {'{'}
-                
-                <div style={{ paddingLeft: '15px' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ color: '#c9d1d9' }}>target:</span> 
-                    <span style={{ color: '#a5d6ff', wordBreak: 'break-all' }}>"{selectedAccount.account_name}"</span>,
-                    <button onClick={() => handleCopy(selectedAccount.account_name)} style={copyBtnStyle}>copy()</button>
-                  </div>
-                  <div>
-                    <span style={{ color: '#c9d1d9' }}>status:</span> <span style={{ color: '#a5d6ff' }}>"Locked"</span>,
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ color: '#c9d1d9' }}>description:</span> 
-                    <span style={{ color: '#a5d6ff', whiteSpace: 'pre-wrap', wordBreak: 'break-word', paddingLeft: '10px' }}>"{selectedAccount.description}"</span>
-                  </div>
-                </div>
-                
-                {'}'};
-              </div>
-
-              <div style={{ marginTop: '15px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '150px', background: '#161b22', border: '1px solid #30363d', borderRadius: '6px', padding: '10px', color: '#a5d6ff', display: 'flex', alignItems: 'center', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                  "{decryptPassword(selectedAccount.encrypted_password)}"
-                </div>
-                <button onClick={() => handleCopy(decryptPassword(selectedAccount.encrypted_password))} style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 15px', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'monospace', flexShrink: 0 }}>
-                  Connect()
-                </button>
-              </div>
-
-              {/* ACTION BUTTONS: EDIT, DELETE, EXPLORE */}
-              <div style={{ marginTop: '20px', display: 'flex', gap: '8px', borderTop: '1px dashed #30363d', paddingTop: '15px', flexWrap: 'wrap' }}>
-                <button onClick={() => handleOpenEdit(selectedAccount)} style={{ flex: 1, minWidth: '80px', background: 'transparent', color: '#d2a8ff', border: '1px solid #d2a8ff', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace' }}>
-                  edit()
-                </button>
-                <button onClick={() => handleDeleteAccount(selectedAccount.id)} style={{ flex: 1, minWidth: '80px', background: 'transparent', color: '#ff7b72', border: '1px solid #ff7b72', padding: '8px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace' }}>
-                  delete()
-                </button>
-              </div>
-              
-              <div style={{ marginTop: '10px' }}>
-                <button onClick={handleExploreSubVault} style={{ width: '100%', background: '#238636', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                  explore_linked_data() // Masuk sub-menu
-                </button>
-              </div>
-
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL 3: SUB-MENU (DATA TAMBAHAN SEPERTI BANK, GOPAY DLL)      */}
-      {/* ============================================================== */}
-      {showSubVaultModal && selectedAccount && (
-        <div style={modalOverlayStyle}>
-          <div style={modalStyle}>
-            <MacHeader />
-            <button onClick={() => {setShowSubVaultModal(false); setShowSubAddForm(false);}} style={closeBtnStyle}>back()</button>
-            
-            <div style={{ padding: '20px', fontFamily: 'monospace', fontSize: '13px' }}>
-              <div style={{ color: '#8b949e', marginBottom: '10px', wordBreak: 'break-all' }}>
-                // linked_data_array for: <span style={{color: '#a5d6ff'}}>"{selectedAccount.account_name}"</span>
-              </div>
-              <h3 style={{ margin: '0 0 15px 0', color: '#79c0ff', fontSize: '16px' }}>Sub-Vault Storage</h3>
-              
-              {/* List Data Anak */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px', maxHeight: '40vh', overflowY: 'auto', paddingRight: '5px' }}>
-                {subAccounts.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '20px 15px', border: '1px dashed #30363d', borderRadius: '6px', background: '#161b22' }}>
-                     <p style={{ color: '#8b949e', marginTop: 0, fontSize: '11px' }}>
-                       /* Ruang untuk Sub-Akun, Website, atau Kunci Spesifik lainnya */
-                     </p>
-                     <div style={{ color: '#d2a8ff', fontSize: '18px', margin: '10px 0' }}>[ EMP_TY ]</div>
-                  </div>
-                ) : (
-                  subAccounts.map(sub => (
-                    <div key={sub.id} style={{ background: '#161b22', padding: '12px', borderRadius: '6px', border: '1px solid #30363d' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#8b949e', fontSize: '11px', marginBottom: '8px' }}>
-                        <span style={{ wordBreak: 'break-all', paddingRight: '10px' }}>// {sub.label}</span>
-                        <span onClick={() => deleteSubAccount(sub.id)} style={{ color: '#ff7b72', cursor: 'pointer', borderBottom: '1px dashed #ff7b72', flexShrink: 0 }}>delete()</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                        <span style={{ color: '#60ffb9', fontWeight: 'bold', letterSpacing: '1px', wordBreak: 'break-all' }}>
-                          {decryptPassword(sub.encrypted_value)}
-                        </span>
-                        <button onClick={() => handleCopy(decryptPassword(sub.encrypted_value))} style={copyBtnStyle}>copy()</button>
-                      </div>
-                    </div>
-                  ))
-                )}
+      {/* MODAL FORM TAMBAH/EDIT */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h2>{isEditing ? 'Edit Data Akun' : 'Tambah Akun Baru'}</h2>
+            <form onSubmit={handleFormSubmit}>
+              <div className="form-group"><label>Nama Akun / Web</label><input type="text" required placeholder="cth: BCA Digital" value={formData.site_name} onChange={(e) => setFormData({...formData, site_name: e.target.value})} /></div>
+              <div className="form-group"><label>Deskripsi</label><textarea placeholder="cth: Catatan..." value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} /></div>
+              <div className="form-group">
+                <label>Kategori</label>
+                <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
+                  <option value="Bank">Perbankan</option><option value="Gmail">Gmail</option><option value="Medsos">Sosial Media</option>
+                  <option value="Game">Game</option><option value="Web">Website</option><option value="Spam">Spam</option><option value="Pribadi">Pribadi</option>
+                </select>
               </div>
 
-              {/* Form Tambah Data Anak */}
-              {showSubAddForm ? (
-                <form onSubmit={handleAddSubAccount} style={{ background: '#0d1117', padding: '15px', borderRadius: '6px', border: '1px solid #58a6ff' }}>
-                  <div style={{ color: '#58a6ff', marginBottom: '10px', fontSize: '12px' }}>&gt;_ new_child_entry</div>
-                  <input placeholder="const account = 'Username / Nama Akun';" value={subFormData.label} onChange={e => setSubFormData({...subFormData, label: e.target.value})} style={inputCodeStyle} required />
-                  <input placeholder="const key = 'Password / Kunci Rahasia';" value={subFormData.value} onChange={e => setSubFormData({...subFormData, value: e.target.value})} style={{...inputCodeStyle, marginTop: '10px'}} required />
-                  
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap' }}>
-                    <button type="submit" style={{ flex: 1, minWidth: '100px', background: '#238636', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold' }}>save()</button>
-                    <button type="button" onClick={() => setShowSubAddForm(false)} style={{ flex: 1, minWidth: '100px', background: 'transparent', color: '#ff7b72', border: '1px solid #ff7b72', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace' }}>cancel()</button>
-                  </div>
-                </form>
-              ) : (
-                <button onClick={() => setShowSubAddForm(true)} style={{ width: '100%', background: 'transparent', color: '#58a6ff', border: '1px dashed #58a6ff', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace' }}>
-                   + insert_new_child_data()
-                </button>
+              {formData.category === 'Spam' && (
+                <div className="form-group" style={{ borderLeft: '2px solid #58a6ff', paddingLeft: '10px' }}>
+                  <label style={{ color: '#58a6ff' }}>Nama Kelompok Spam</label>
+                  <input type="text" required placeholder="Pilih atau ketik kelompok baru..." value={formData.spam_group} onChange={(e) => setFormData({...formData, spam_group: e.target.value})} list="spam-groups-options" />
+                  <datalist id="spam-groups-options">{existingSpamGroups.map((group, index) => (<option key={index} value={group} />))}</datalist>
+                </div>
               )}
-            </div>
+
+              <div className="form-group"><label>Username / Email</label><input type="text" required value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} /></div>
+              <div className="form-group"><label>Password</label><input type="text" required value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} /></div>
+              <div className="form-group"><label>Logo / Gambar Profil</label><input type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'image')} /></div>
+              <div className="form-group"><label>Sampul Kartu</label><input type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'cover_image')} /></div>
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => setShowModal(false)} disabled={isSaving}>Batal</button>
+                <button type="submit" className="btn-save" disabled={isSaving}>{isSaving ? 'Menyimpan...' : 'Simpan Data'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
-// --- GAYA CSS TETAP SAMA SEPERTI ASLIMU ---
-const avatarStyle = { width: '35px', height: '35px', borderRadius: '50%', border: '1px solid #30363d', objectFit: 'cover', flexShrink: 0, background: '#161b22' };
-const avatarFallbackStyle = { width: '35px', height: '35px', background: '#21262d', border: '1px solid #30363d', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#8b949e', fontWeight: 'bold' };
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(1,4,9,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '15px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
-const modalStyle = { background: '#0d1117', border: '1px solid #30363d', borderRadius: '10px', width: '100%', maxWidth: '450px', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', overflow: 'hidden', maxHeight: '95vh', display: 'flex', flexDirection: 'column' };
-const closeBtnStyle = { position: 'absolute', top: '10px', right: '15px', background: 'transparent', border: 'none', color: '#ff7b72', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold', fontFamily: 'monospace' };
-const inputCodeStyle = { padding: '10px 12px', background: '#0d1117', color: '#c9d1d9', border: '1px solid #30363d', borderRadius: '6px', fontFamily: 'monospace', outline: 'none', width: '100%', boxSizing: 'border-box', fontSize: '12px' };
-const uploadBoxStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', background: '#0d1117', border: '1px dashed #30363d', borderRadius: '6px', cursor: 'pointer', color: '#58a6ff', fontSize: '12px', fontFamily: 'monospace', textAlign: 'center' };
-const btnStyle = { padding: '10px 15px', background: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontFamily: 'monospace', fontWeight: 'bold', marginTop: '10px' };
-const bigAvatarStyle = { width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #30363d', objectFit: 'cover', background: '#161b22', flexShrink: 0 };
-const bigAvatarFallbackStyle = { width: '50px', height: '50px', background: '#161b22', border: '1px solid #30363d', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#8b949e', flexShrink: 0 };
-const copyBtnStyle = { background: 'transparent', color: '#8b949e', border: '1px solid #30363d', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' };
+export default Vault;

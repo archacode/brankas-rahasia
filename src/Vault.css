@@ -1,0 +1,515 @@
+/* =========================================
+   VAULT.CSS - FULL DESIGN (LOCKLOCK)
+========================================= */
+
+/* --- TAMPILAN UTAMA --- */
+.vault-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #010409;
+  color: #e6edf3;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* --- SIDEBAR KIRI --- */
+.vault-sidebar {
+  width: 260px;
+  background-color: #0d1117;
+  border-right: 1px solid #30363d;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.brand-area {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #e6edf3;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: 2px;
+}
+
+.brand-icon {
+  color: #58a6ff;
+}
+
+.menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.menu-item {
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #8b949e;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+}
+
+.menu-item svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
+
+.menu-item:hover {
+  background-color: rgba(139, 148, 158, 0.1);
+  color: #c9d1d9;
+}
+
+.menu-item.active {
+  background-color: #21262d;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+}
+.menu-item.active svg {
+  opacity: 1;
+  color: #58a6ff;
+}
+
+/* FOOTER COPYRIGHT SIDEBAR */
+.sidebar-footer {
+  margin-top: auto; 
+  font-size: 0.75rem;
+  color: #484f58;
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #21262d;
+  letter-spacing: 0.5px;
+}
+
+/* --- AREA UTAMA KANAN --- */
+.vault-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.vault-header {
+  height: 70px;
+  background-color: rgba(1, 4, 9, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-left h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: #e6edf3;
+  font-weight: 500;
+}
+
+.header-right {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.search-bar {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  color: #e6edf3;
+  padding: 8px 15px;
+  border-radius: 6px;
+  width: 250px;
+  outline: none;
+}
+.search-bar:focus {
+  border-color: #58a6ff;
+}
+
+.btn-add {
+  background-color: #1f6feb;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-add:hover {
+  background-color: #388bfd;
+  box-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
+}
+
+/* --- GRID KARTU & KELOMPOK SPAM --- */
+.vault-content {
+  padding: 30px;
+}
+
+.spam-group-section {
+  margin-bottom: 40px;
+}
+
+.spam-group-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #58a6ff;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #21262d;
+  padding-bottom: 8px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* --- DESAIN KARTU AKUN (GLASSMORPHISM) --- */
+.account-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.account-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(88, 166, 255, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.account-card-cover-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+}
+
+.account-card-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-card-cover-overlay {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, transparent 40%, #010409 100%);
+}
+
+.account-card-content {
+  padding: 15px 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  background-color: #21262d;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #e6edf3;
+  overflow: hidden;
+  border: 1px solid #30363d;
+}
+.card-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.card-category {
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-desc {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin-bottom: 15px;
+  line-height: 1.4;
+  border-left: 2px solid #30363d;
+  padding-left: 10px;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.info-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-bottom: 4px;
+}
+
+.info-value-area {
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.4);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  gap: 8px;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #e6edf3;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* TOMBOL MATA & COPY DIPERJELAS */
+.action-icon-btn {
+  background-color: rgba(255, 255, 255, 0.08); 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  color: #c9d1d9;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.action-icon-btn:hover {
+  color: #58a6ff; 
+  background-color: rgba(88, 166, 255, 0.15);
+  border-color: rgba(88, 166, 255, 0.4);
+}
+
+.action-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.card-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #30363d;
+  padding-top: 15px;
+}
+
+.btn-edit, .btn-delete {
+  background: none;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-edit:hover {
+  background-color: rgba(139, 148, 158, 0.1);
+  color: #58a6ff;
+  border-color: #58a6ff;
+}
+
+.btn-delete:hover {
+  background-color: rgba(248, 81, 73, 0.1);
+  color: #f85149;
+  border-color: #f85149;
+}
+
+/* --- POPUP MODAL & KUNCI --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-box {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 25px;
+  width: 450px;
+  max-width: 90%;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-box h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  color: #e6edf3;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 10px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  color: #8b949e;
+  margin-bottom: 5px;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+  background-color: #010409;
+  border: 1px solid #30363d;
+  color: #e6edf3;
+  padding: 10px;
+  border-radius: 6px;
+  outline: none;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: #58a6ff;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-cancel:hover:not(:disabled) {
+  background-color: #21262d;
+}
+.btn-cancel:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+
+.btn-save {
+  background-color: #1f6feb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-save:hover:not(:disabled) {
+  background-color: #388bfd;
+}
+.btn-save:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+
+/* --- ANIMASI DATA KOSONG (NOT FOUND) --- */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.empty-state svg {
+  width: 70px;
+  height: 70px;
+  color: #30363d;
+  margin-bottom: 20px;
+  animation: floatEmpty 3s ease-in-out infinite; 
+}
+
+@keyframes floatEmpty {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); color: #58a6ff; }
+  100% { transform: translateY(0px); }
+}
+
+.empty-state h3 {
+  color: #e6edf3;
+  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.empty-state p {
+  color: #8b949e;
+  margin: 0;
+  font-size: 0.9rem;
+}
