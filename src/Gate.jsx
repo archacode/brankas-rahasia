@@ -8,15 +8,14 @@ function Gate({ onUnlock }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-// Pastikan baris const KUNCI_RAHASIA sudah HILANG
-// Dan di dalam fungsi handleSubmit, pastikan kodenya begini:
 
-if (sha256(password).toString() === import.meta.env.VITE_GATE_PASSWORD) {
-   onUnlock();
-} else {
-   setError('Kunci akses salah.');
-}
+    if (sha256(password).toString() === import.meta.env.VITE_GATE_PASSWORD) {
+      onUnlock();
+    } else {
+      setError('Kunci akses salah.');
+      setPassword(''); // Asisten tambahin biar input ke-reset kalau salah
+    }
+  }; // <--- INI DIA KURUNG YANG KURANG TADI, BOS! Sudah asisten tambahin.
 
   return (
     <div className="gate-container">
@@ -55,7 +54,6 @@ if (sha256(password).toString() === import.meta.env.VITE_GATE_PASSWORD) {
           
           <div className="error-msg">{error}</div>
         </form>
-
       </div>
     </div>
   );
