@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import sha256 from 'crypto-js/sha256';
 import './Vault.css'; 
 import { supabase } from './supabase'; 
 
@@ -96,19 +97,29 @@ function Vault({ onLock }) {
 
   const handleBankUnlockSubmit = (e) => {
     e.preventDefault();
-    if (bankPasswordInput === "kaya") {
-      setIsBankUnlocked(true); setShowBankGate(false); setBankError(''); setActiveCategory('Bank'); setBankPasswordInput('');
+    if (sha256(bankPasswordInput).toString() === import.meta.env.VITE_BANK_PASSWORD) {
+      setIsBankUnlocked(true);
+      setShowBankGate(false);
+      setBankError('');
+      setActiveCategory('Bank');
+      setBankPasswordInput('');
     } else {
-      setBankError('Kunci Brankas Bank Salah!'); setBankPasswordInput('');
+      setBankError('Kunci Brankas Bank Salah!');
+      setBankPasswordInput('');
     }
   };
 
   const handlePribadiUnlockSubmit = (e) => {
     e.preventDefault();
-    if (pribadiPasswordInput === "diam") {
-      setIsPribadiUnlocked(true); setShowPribadiGate(false); setPribadiError(''); setActiveCategory('Pribadi'); setPribadiPasswordInput('');
+    if (sha256(pribadiPasswordInput).toString() === import.meta.env.VITE_PRIBADI_PASSWORD) {
+      setIsPribadiUnlocked(true);
+      setShowPribadiGate(false);
+      setPribadiError('');
+      setActiveCategory('Pribadi');
+      setPribadiPasswordInput('');
     } else {
-      setPribadiError('Kunci Pribadi Salah, Bos!'); setPribadiPasswordInput('');
+      setPribadiError('Kunci Pribadi Salah, Bos!');
+      setPribadiPasswordInput('');
     }
   };
 
