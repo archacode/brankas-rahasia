@@ -9,17 +9,14 @@ function Gate({ onUnlock }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // --- PASSWORD UTAMA MASUK WEB ---
-    const KUNCI_RAHASIA = "kontol"; 
-    
-    if (password === KUNCI_RAHASIA) {
-      setError('');
-      if (onUnlock) onUnlock(); // Panggil fungsi login ke App.jsx
-    } else {
-      setError('Kunci akses salah atau tidak dikenali.');
-      setPassword(''); 
-    }
-  };
+// Pastikan baris const KUNCI_RAHASIA sudah HILANG
+// Dan di dalam fungsi handleSubmit, pastikan kodenya begini:
+
+if (sha256(password).toString() === import.meta.env.VITE_GATE_PASSWORD) {
+   onUnlock();
+} else {
+   setError('Kunci akses salah.');
+}
 
   return (
     <div className="gate-container">
