@@ -97,18 +97,15 @@ function Vault({ onLock }) {
 
   const handleBankUnlockSubmit = (e) => {
     e.preventDefault();
-
     const hasilHash = sha256(bankPasswordInput).toString();
 
-    // Proses pengecekan keamanan
     if (hasilHash === import.meta.env.VITE_BANK_PASSWORD) {
       setIsBankUnlocked(true);
       setShowBankGate(false);
       setBankError('');
       setActiveCategory('Bank');
-      setBankPasswordInput(''); // Kosongkan input setelah berhasil
+      setBankPasswordInput(''); 
     } else {
-      // JURUS BARBAR: Kita paksa hash-nya tampil di layar!
       setBankError('Hash sandi ini: ' + hasilHash);
       setBankPasswordInput(''); 
     }
@@ -116,14 +113,17 @@ function Vault({ onLock }) {
 
   const handlePribadiUnlockSubmit = (e) => {
     e.preventDefault();
-    if (sha256(pribadiPasswordInput).toString() === import.meta.env.VITE_PRIBADI_PASSWORD) {
+    const hasilHashPribadi = sha256(pribadiPasswordInput).toString();
+
+    if (hasilHashPribadi === import.meta.env.VITE_PRIBADI_PASSWORD) {
       setIsPribadiUnlocked(true);
       setShowPribadiGate(false);
       setPribadiError('');
       setActiveCategory('Pribadi');
       setPribadiPasswordInput('');
     } else {
-      setPribadiError('Kunci Pribadi Salah, Bos!');
+      // JURUS BARBAR PART 2: Munculin hash pribadi ke layar!
+      setPribadiError('Hash Pribadi: ' + hasilHashPribadi);
       setPribadiPasswordInput('');
     }
   };
@@ -235,7 +235,6 @@ function Vault({ onLock }) {
         dbError = error;
       }
 
-      // ALARM JIKA SUPABASE MENOLAK DATA BARU
       if (dbError) {
         alert("Waduh, Supabase nolak Bos! Alasan: " + dbError.message);
         console.error("Detail Error:", dbError);
@@ -390,7 +389,6 @@ function Vault({ onLock }) {
             <form onSubmit={handleBankUnlockSubmit}>
               <div className="form-group"><input type="password" required placeholder="Masukkan PIN Bank..." value={bankPasswordInput} onChange={(e) => setBankPasswordInput(e.target.value)} style={{ textAlign: 'center', letterSpacing: '4px' }} /></div>
               
-              {/* Tempat Error Ditampilkan */}
               <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px', wordBreak: 'break-all' }}>
                 {bankError}
               </div>
@@ -412,7 +410,12 @@ function Vault({ onLock }) {
             <h2>Area Pribadi Terkunci</h2>
             <form onSubmit={handlePribadiUnlockSubmit}>
               <div className="form-group"><input type="password" required placeholder="Masukkan Kunci..." value={pribadiPasswordInput} onChange={(e) => setPribadiPasswordInput(e.target.value)} style={{ textAlign: 'center', letterSpacing: '4px' }} /></div>
-              <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px' }}>{pribadiError}</div>
+              
+              {/* Tempat Hash Pribadi Muncul */}
+              <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px', wordBreak: 'break-all' }}>
+                {pribadiError}
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button type="button" className="btn-cancel" onClick={() => setShowPribadiGate(false)}>Batal</button>
                 <button type="submit" className="btn-save" style={{ backgroundColor: '#f85149' }}>Buka Kunci</button>
@@ -462,4 +465,4 @@ function Vault({ onLock }) {
   );
 }
 
-export default Vault; 
+export default Vault;
