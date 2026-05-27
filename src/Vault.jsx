@@ -96,26 +96,23 @@ function Vault({ onLock }) {
   };
 
   const handleBankUnlockSubmit = (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  // Asisten sengaja titip "mata-mata" di sini biar kalau salah lagi, 
-  // Bos tinggal buka F12 -> Console buat ngecek tulisan apa yang gak cocok.
-  console.log("Sandi yang Bos ketik:", bankPasswordInput);
-  console.log("Hasil Hash Input:", sha256(bankPasswordInput).toString());
-  console.log("Target di Vercel:", import.meta.env.VITE_BANK_PASSWORD);
+    const hasilHash = sha256(bankPasswordInput).toString();
 
-  // Proses pengecekan keamanan
-  if (sha256(bankPasswordInput).toString() === import.meta.env.VITE_BANK_PASSWORD) {
-    setIsBankUnlocked(true);
-    setShowBankGate(false);
-    setBankError('');
-    setActiveCategory('Bank');
-    setBankPasswordInput(''); // Kosongkan input setelah berhasil
-  } else {
-    setBankError('Kunci Brankas Bank Salah!');
-    setBankPasswordInput(''); // Kosongkan input biar bisa ngetik ulang
-  }
-};
+    // Proses pengecekan keamanan
+    if (hasilHash === import.meta.env.VITE_BANK_PASSWORD) {
+      setIsBankUnlocked(true);
+      setShowBankGate(false);
+      setBankError('');
+      setActiveCategory('Bank');
+      setBankPasswordInput(''); // Kosongkan input setelah berhasil
+    } else {
+      // JURUS BARBAR: Kita paksa hash-nya tampil di layar!
+      setBankError('Hash sandi ini: ' + hasilHash);
+      setBankPasswordInput(''); 
+    }
+  };
 
   const handlePribadiUnlockSubmit = (e) => {
     e.preventDefault();
@@ -392,7 +389,12 @@ function Vault({ onLock }) {
             <h2>Brankas Perbankan</h2>
             <form onSubmit={handleBankUnlockSubmit}>
               <div className="form-group"><input type="password" required placeholder="Masukkan PIN Bank..." value={bankPasswordInput} onChange={(e) => setBankPasswordInput(e.target.value)} style={{ textAlign: 'center', letterSpacing: '4px' }} /></div>
-              <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px' }}>{bankError}</div>
+              
+              {/* Tempat Error Ditampilkan */}
+              <div style={{ color: '#f85149', fontSize: '0.85rem', marginBottom: '15px', minHeight: '18px', wordBreak: 'break-all' }}>
+                {bankError}
+              </div>
+              
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button type="button" className="btn-cancel" onClick={() => setShowBankGate(false)}>Batal</button>
                 <button type="submit" className="btn-save" style={{ backgroundColor: '#1f6feb' }}>Buka Brankas</button>
