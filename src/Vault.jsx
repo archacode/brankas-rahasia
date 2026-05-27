@@ -462,4 +462,4 @@ function Vault({ onLock }) {
   );
 }
 
-export default Vault;
+export default Vault; 
