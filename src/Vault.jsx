@@ -96,18 +96,26 @@ function Vault({ onLock }) {
   };
 
   const handleBankUnlockSubmit = (e) => {
-    e.preventDefault();
-    if (sha256(bankPasswordInput).toString() === import.meta.env.VITE_BANK_PASSWORD) {
-      setIsBankUnlocked(true);
-      setShowBankGate(false);
-      setBankError('');
-      setActiveCategory('Bank');
-      setBankPasswordInput('');
-    } else {
-      setBankError('Kunci Brankas Bank Salah!');
-      setBankPasswordInput('');
-    }
-  };
+  e.preventDefault();
+
+  // Asisten sengaja titip "mata-mata" di sini biar kalau salah lagi, 
+  // Bos tinggal buka F12 -> Console buat ngecek tulisan apa yang gak cocok.
+  console.log("Sandi yang Bos ketik:", bankPasswordInput);
+  console.log("Hasil Hash Input:", sha256(bankPasswordInput).toString());
+  console.log("Target di Vercel:", import.meta.env.VITE_BANK_PASSWORD);
+
+  // Proses pengecekan keamanan
+  if (sha256(bankPasswordInput).toString() === import.meta.env.VITE_BANK_PASSWORD) {
+    setIsBankUnlocked(true);
+    setShowBankGate(false);
+    setBankError('');
+    setActiveCategory('Bank');
+    setBankPasswordInput(''); // Kosongkan input setelah berhasil
+  } else {
+    setBankError('Kunci Brankas Bank Salah!');
+    setBankPasswordInput(''); // Kosongkan input biar bisa ngetik ulang
+  }
+};
 
   const handlePribadiUnlockSubmit = (e) => {
     e.preventDefault();
